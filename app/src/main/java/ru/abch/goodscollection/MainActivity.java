@@ -130,7 +130,7 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
     Set<BluetoothDevice> pairedDevices;
     String[] devices = null, hwDevices = null;
     private static final String ACTION_BARCODE_DATA = "com.honeywell.sample.action.BARCODE_DATA";
-    private final int WAIT_QNT = 0, ERROR = 1, WAIT_GOODS_CODE = 2, WAIT_GOODS_BARCODE = 3, WAIT_CELL = 4;
+    private final int ERROR = 1;
     private int state = ERROR;
     GetWSBarcodes getBarCodes;
     GetWSCells getCells;
@@ -162,12 +162,9 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
     Context mContext;
     public static GoodsMovement[] updateGoodsMovements = null;
     public static ArrayList<Long> pickedRowsForDelete = null;
-//    ArrayList<GoodsMovement> pickedGoods;
     PickedFragment pf;
     private EditText etDCTNumber, etLabels, etLabelQnt;
-//    StartFragment sf;
     FinishPickingFragment fpf;
-//    boolean uploadDeficiency = false;
     GetWSDump getWSDump;
     String dumpURL = null;
     public static GoodsMovement currentGoods;
@@ -348,15 +345,7 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
         }
         dumpURL = uri.toASCIIString();
         refreshCells();
-        /*
-        **************Do it after select workzones***************
-        refreshData();
-        pickedGoods = Database.pickedGoods();
-
-         */
-//        App.cells = Database.getCells();
         filenameSD = App.deviceUniqueIdentifier+ "_" + getCurrentDate() + ".txt";
-
         refreshTimer  = new Timer();
         refreshTimer.schedule(new TimerTask() {
             @Override
@@ -1536,7 +1525,6 @@ Honeywell Android Data Collection Intent APIAPI DOCUMENTATION
             if(!this.isFinishing())
             Toast.makeText(this,getResources().getString(R.string.no_sd_card),Toast.LENGTH_SHORT).show();
             for(File f : listExternalDirs) {
-//                Log.d(TAG, "External dir " + f.getAbsolutePath() + " emulated " + isExternalStorageEmulated(f));
                 if(f.getAbsolutePath().contains("emulated")) {
                     sdPath = f;
                     break;

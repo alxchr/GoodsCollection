@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CMakeSettings">
+    <configurations>
+      <configuration PROFILE_NAME="Debug" CONFIG_NAME="Debug" />
+    </configurations>
+  </component>
+  <component name="DesignSurface">
+    <option name="filePathToZoomLevelMap">
+      <map>
+        <entry key="..\:/Users/cherepanovab/Downloads/StudioProjects/GoodsCollection/app/src/main/res/layout/adb_picked.xml" value="0.19322916666666667" />
+        <entry key="..\:/Users/cherepanovab/Downloads/StudioProjects/GoodsCollection/app/src/main/res/layout/picked_item.xml" value="0.19322916666666667" />
+        <entry key="..\:/Users/cherepanovab/Downloads/StudioProjects/GoodsCollection/app/src/main/res/layout/spinner_item.xml" value="0.18333333333333332" />
+      </map>
+    </option>
+  </component>
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_11" default="true" project-jdk-name="1.8" project-jdk-type="JavaSDK">
+    <output url="file://$PROJECT_DIR$/build/classes" />
+  </component>
+  <component name="ProjectType">
+    <option name="id" value="Android" />
+  </component>
+</project>
