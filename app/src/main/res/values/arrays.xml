@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="store_names">
+        <item>Кулибина 3                                        </item>
+        <item>Рылеева 18                                        </item>
+        <item>Хлебозаводская 5                                  </item>
+        <item>Троицкий тракт - Склад                            </item>
+        <item>Балашиха -Логистика (ответхранение, По-ШТУЧНОЕ)   </item>
+        <item>Омск склад                                        </item>
+        <item>ЕКБ Березовский                                   </item>
+        <item>Наб.Челны склад                                   </item>
+        <item>Новосибирск-Малыгина                              </item>
+        <item>Нижний Новгород склад                             </item>
+        <item>Пермь Журавлев Закамск                            </item>
+        <item>Пермь Регрин                                      </item>
+        <item>Уфа Тест                                          </item>
+        <item>Троицкий тракт - Торговый зал                     </item>
+        <item>Пермь Грузовой сервис                             </item>
+        <item>Иркутск                                           </item>
+        <item>Мирный 31 км.                                     </item>
+    </string-array>
+    <integer-array name="time_interval">
+        <item>1800</item>
+        <item>3600</item>
+        <item>7200</item>
+        <item>14400</item>
+        <item>28800</item>
+    </integer-array>
+    <string-array name="time_interval_name">
+        <item>30 мин.</item>
+        <item>1 час</item>
+        <item>2 часа</item>
+        <item>4 часа</item>
+        <item>8 часов</item>
+    </string-array>
+    <string-array name="printers">
+        <item>Мобильный принтер</item>
+        <item>Стационарный принтер</item>
+    </string-array>
+</resources>
