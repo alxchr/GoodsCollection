@@ -714,15 +714,6 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
                     PickedAdapter pickedAdapter = new PickedAdapter(this, Database.pickedGoods());
                     ListView lvGoodsList = llPickedGoods.findViewById(R.id.lv_pickedlist);
                     lvGoodsList.setAdapter(pickedAdapter);
-                    /*
-                    adbPicked.setPositiveButton(R.string.yes, new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialogInterface, int i) {
-
-                        }
-                    });
-
-                     */
                     adbPicked.setView(llPickedGoods);
                     adbPicked.create().show();
                 }
@@ -817,7 +808,6 @@ Honeywell Android Data Collection Intent APIAPI DOCUMENTATION
             processScan(res);
         } else
         if (codeId.equals("b")) {
-//            Log.d(TAG, "Scan code39 =" + scan);
             if(CheckCode.checkGoods39(scan) && scan.length() > 11 && scan.contains(".")) {
                 String goodsId = scan.substring(1, 10).replaceAll("\\.", " ");
                 String goodsQnt = scan.substring(10).replaceAll("\\.", "");
@@ -825,7 +815,6 @@ Honeywell Android Data Collection Intent APIAPI DOCUMENTATION
                     int qnt;
                     try {
                         qnt = Integer.parseInt(goodsQnt, 36);
-//                FL.d(TAG, "Goods id =" + goodsId + " goods qnt =" + goodsQnt + " " + qnt);
                         GoodsMovement[] gms = Database.getGoodsById(goodsId);
                         if (gms != null) {
                             GoodsPickingFragment gpf = (GoodsPickingFragment) getSupportFragmentManager().findFragmentByTag(GoodsPickingFragment.class.getSimpleName());
@@ -888,7 +877,6 @@ Honeywell Android Data Collection Intent APIAPI DOCUMENTATION
                         if (bcr.counter > 0) {
                             Database.beginTr();
                             for (int i = 0; i < bcr.counter; i++) {
-//                                Log.d(TAG, " " + bcr.bc[i].goods + " " + bcr.bc[i].barcode+ " " + bcr.bc[i].qnt);
                                 Database.addBarCode(
                                         bcr.bc[i].goods,
                                         bcr.bc[i].barcode,
@@ -927,16 +915,9 @@ Honeywell Android Data Collection Intent APIAPI DOCUMENTATION
                     FL.d(TAG, "Call error " + e.getMessage());
                     say(getResources().getString(R.string.no_connection));
                 }
-
                 public void onResponse(Call call, Response response)
                         throws IOException {
                     FL.d(TAG, "Responce =" + response);
-                    /*
-                    if (response.code() == 200) {
-                        if (type == POSTGOODS || type == POSTDEFICIENCY) getDump();
-                    }
-
-                     */
                 }
             });
         }
@@ -954,10 +935,8 @@ Honeywell Android Data Collection Intent APIAPI DOCUMENTATION
     }
     public void refreshOnTimer() {
         getDump();
-//        getBarCodes = new GetWSBarcodes();
         getGoods = new GetWSGoods();
         try {
-//            getBarCodes.run(barcodesURL);
             getGoods.run(goodsURL, false);
         } catch (IOException e) {
             e.printStackTrace();
@@ -1015,11 +994,8 @@ Honeywell Android Data Collection Intent APIAPI DOCUMENTATION
                     if(zones != null) {
                         for(int i = 0; i < zones.size(); i++)  Log.d(TAG, "Dump zone " + zones.get(i).zonein + " " + zones.get(i).zonein_descr);
                     }
-//                    App.cells = Database.getCells();
-//                    Log.d(TAG, "Cells # " + App.cells.length);
                 }
                 public void onFailure(Call call, IOException e) {
-//                    App.cells = Database.getCells();
                     FL.d(TAG, "Refresh cell error" + e.getMessage() + "\n from db cells #"  + App.cells.length);
                 }
             });
@@ -1055,18 +1031,6 @@ Honeywell Android Data Collection Intent APIAPI DOCUMENTATION
                             } catch (URISyntaxException e) {
                                 e.printStackTrace();
                             }
-                            /*
-                            if (goodsResult.counter > 0) {
-                                for (int i = 0; i < goodsResult.counter; i++) {
-                                    goodsResult.goodsMovements[i].qnt -= Database.countPicked(
-                                            goodsResult.goodsMovements[i].goods,
-                                            goodsResult.goodsMovements[i].mdoc,
-                                            goodsResult.goodsMovements[i].cellOut_task,
-                                            goodsResult.goodsMovements[i].cellIn_task);
-                                }
-                            }
-
-                             */
                             if (runUI) {
                                 Database.clearGoodsMovements();
                                 if (goodsResult.counter > 0) {
@@ -1194,7 +1158,6 @@ Honeywell Android Data Collection Intent APIAPI DOCUMENTATION
             if (qty > 0) {
                 if(i == 0) urgent = true;
                 if(selectedGoods == null) {
-//                    selectedGoods = Database.selectGoods(zonein, after, before);
                     if (clientId == null) {
                         selectedGoods = (i == 4) ? Database.selectGoods(zonein, after) : Database.selectGoods(zonein, after, before);
                     } else {
@@ -1245,8 +1208,6 @@ Honeywell Android Data Collection Intent APIAPI DOCUMENTATION
     public void gotoMainFragment(ArrayList<Zone> workZones) {
         App.state = App.MAINCYCLE;
         getDump();
-//        refreshData();
-//        pickedGoods = Database.pickedGoods();
         getSupportFragmentManager().beginTransaction()
                 .replace(R.id.container, MainFragment.newInstance(workZones), MainFragment.class.getSimpleName())
                 .commitNow();
@@ -1304,8 +1265,6 @@ Honeywell Android Data Collection Intent APIAPI DOCUMENTATION
         } else if (getSupportFragmentManager().findFragmentByTag(GoodsPickingFragment.class.getSimpleName()) != null) {
             Log.d(TAG, GoodsPickingFragment.class.getSimpleName() + " is on");
             backPressed = false;
-//            refreshData();
-//            gotoMainFragment(App.getWorkZones());
             if(photoShown) {
                 photoShown = false;
                 gpf.closePhoto();
@@ -1343,10 +1302,6 @@ Honeywell Android Data Collection Intent APIAPI DOCUMENTATION
         }
         registerReceiver(barcodeDataReceiver, new IntentFilter(ACTION_BARCODE_DATA));
         Database.unlockGoodsMovements();
-//        pickedGoods = Database.pickedGoods();
-//        if(App.pickedGoods != null && App.pickedGoods.size() > 0) {
-//            gotoPickedFragment(App.pickedGoods);
-//        } else {
             FL.d(TAG, "State = " + App.state);
             switch (App.state) {
                 case App.START:
@@ -1379,7 +1334,6 @@ Honeywell Android Data Collection Intent APIAPI DOCUMENTATION
                     gotoStartFragment();
                     break;
             }
-//        }
     }
     private BroadcastReceiver networkChangeReceiver = new BroadcastReceiver() {
         @Override
@@ -1502,7 +1456,6 @@ Honeywell Android Data Collection Intent APIAPI DOCUMENTATION
             } catch (URISyntaxException e) {
                 e.printStackTrace();
             }
-//            selectedGoods = null;
         }
     }
     public class GetWSDump {
