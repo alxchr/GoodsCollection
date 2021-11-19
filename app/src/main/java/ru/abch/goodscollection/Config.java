@@ -1,7 +1,5 @@
 package ru.abch.goodscollection;
 
-import com.bosphere.filelogger.FL;
-
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 
@@ -9,7 +7,7 @@ public class Config {
     public static String scheme;
     public static String host;
     public static int port;
-    public static boolean debug = true;
+    public static boolean debug = false;
     public static final boolean tts = true;
 //    public static final String scheme = "https";
 //    public static final String scheme = "http";

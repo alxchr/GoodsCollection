@@ -71,4 +71,10 @@
     <string name="no_sd_card">Insert SD card</string>
     <string name="all_clients">All</string>
     <string name="adb_picked">Picked goods</string>
+    <string name="current_position">Current position</string>
+    <string name="start_cell_label">Enter start cell nn.nnn</string>
+    <string name="pick_mode">Pick mode</string>
+    <string name="separate">Separate</string>
+    <string name="united">United</string>
+    <string name="cancel">Cancel</string>
 </resources>

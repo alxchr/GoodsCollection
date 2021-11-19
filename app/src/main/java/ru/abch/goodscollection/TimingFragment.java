@@ -1,14 +1,7 @@
 package ru.abch.goodscollection;
 
-import androidx.lifecycle.ViewModelProvider;
-
 import android.os.AsyncTask;
 import android.os.Bundle;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.fragment.app.Fragment;
-
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
@@ -20,11 +13,14 @@ import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
+
 import com.bosphere.filelogger.FL;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 
 public class TimingFragment extends Fragment {
 
@@ -72,7 +68,7 @@ public class TimingFragment extends Fragment {
         }
         btStart.setOnClickListener(view -> {
             Log.d(TAG,"Start clicked");
-            etStartCell.setText("");
+//            etStartCell.setText("");
             ((MainActivity) getActivity()).gotoPickingFragment(((MainActivity) getActivity()).goodsMovements);
         });
     }
@@ -96,6 +92,7 @@ public class TimingFragment extends Fragment {
             ((MainActivity) getActivity()).gotoPickingFragment(((MainActivity) getActivity()).goodsMovements);
         });
         MainActivity.say(getResources().getString(R.string.start_cell));
+        etStartCell.setText("");
     }
 
     @Override
@@ -141,17 +138,17 @@ public class TimingFragment extends Fragment {
                         input = input.substring(1);
 //                        Log.d(TAG, "Enter char begins string =" + input);
                     }
-                    if (input.contains("\n") && input.indexOf("\n") > 0) {
+                    if (input.contains("\n") && input.indexOf("\n") > 0 && !input.contains("-")) {
                         entIndex = input.indexOf("\n");
                         input = input.substring(0, entIndex);
 //                        Log.d(TAG, "Enter at " + entIndex + " position of input =" + input);
                         if (CheckCode.checkCellStr(input)) {
                             prefix = Integer.parseInt(input.substring(0, input.indexOf(".")));
                             suffix = Integer.parseInt(input.substring(input.indexOf(".") + 1));
-                            result = String.format("%02d",prefix) + String.format("%03d",suffix);
+                            result = String.format("%02d", prefix) + String.format("%03d", suffix);
                             Log.d(TAG, "Cell name " + result);
                             startCell = Database.getCellByName(result);
-                            if(startCell != null) {
+                            if (startCell != null) {
                                 App.currentDistance = startCell.distance;
                                 Log.d(TAG, "Found cell " + startCell.descr + " distance " + App.currentDistance);
                                 etStartCell.setEnabled(false);
@@ -167,11 +164,13 @@ public class TimingFragment extends Fragment {
                             } else {
                                 Log.d(TAG, "Cell name " + result + " not found");
                                 MainActivity.say(getResources().getString(R.string.enter_again));
+                                etStartCell.setText("");
                             }
                         } else {
                             MainActivity.say(getResources().getString(R.string.enter_again));
+                            etStartCell.setText("");
                         }
-                        etStartCell.setText("");
+
                     }
                 }
             }
@@ -204,13 +203,13 @@ public class TimingFragment extends Fragment {
             MainActivity.say(getResources().getString(R.string.enter_again));
         }
     }
-    class SortTask extends AsyncTask<ArrayList<GoodsMovement>,Void,Void> {
 
+    private class SortTask extends AsyncTask<ArrayList<GoodsMovement>, Void, Void> {
         @Override
         protected Void doInBackground(ArrayList<GoodsMovement>... goodsMovements) {
 //            FL.d(TAG, "Sort doInBackground");
             ArrayList<GoodsMovement> gms = goodsMovements[0];
-            for(int i = 0; i < gms.size(); i++) {
+            for (int i = 0; i < gms.size(); i++) {
                 gms.get(i).distance = Database.getCellById(gms.get(i).cellOut).distance;
             }
             gms.sort((lhs, rhs) -> {

@@ -1,10 +1,8 @@
 package ru.abch.goodscollection;
 
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
+import static android.os.Environment.isExternalStorageEmulated;
+import static android.text.InputType.TYPE_CLASS_NUMBER;
+import static org.apache.http.conn.ssl.SSLSocketFactory.SSL;
 
 import android.Manifest;
 import android.app.Activity;
@@ -16,36 +14,37 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
-
-import android.graphics.Bitmap;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
 import android.media.AudioManager;
 import android.media.SoundPool;
 import android.net.ConnectivityManager;
-import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.speech.tts.TextToSpeech;
-import android.util.ArrayMap;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.WindowManager;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.Spinner;
 import android.widget.Toast;
+
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.bosphere.filelogger.FL;
 import com.google.gson.Gson;
@@ -53,8 +52,6 @@ import com.google.gson.GsonBuilder;
 import com.zebra.sdk.comm.BluetoothConnection;
 import com.zebra.sdk.comm.Connection;
 import com.zebra.sdk.comm.ConnectionException;
-import com.zebra.sdk.graphics.ZebraImageI;
-import com.zebra.sdk.graphics.internal.ZebraImageAndroid;
 import com.zebra.sdk.printer.PrinterLanguage;
 import com.zebra.sdk.printer.ZebraPrinter;
 import com.zebra.sdk.printer.ZebraPrinterFactory;
@@ -90,7 +87,6 @@ import java.util.Set;
 import java.util.TimeZone;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.KeyManagerFactory;
@@ -109,11 +105,7 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import ru.abch.goodscollection.ui.main.MainFragment;
-
-import static android.os.Environment.isExternalStorageEmulated;
-import static android.text.InputType.TYPE_CLASS_NUMBER;
-import static android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL;
-import static org.apache.http.conn.ssl.SSLSocketFactory.SSL;
+import ru.abch.goodscollection.ui.main.MainViewModel;
 
 public class MainActivity extends AppCompatActivity implements TextToSpeech.OnInitListener, SoundPool.OnLoadCompleteListener {
     private static final int REQ_PERMISSIONS = 1230, REQUEST_ENABLE_BT = 1231;
@@ -121,10 +113,12 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
     String btmac = "a4:da:32:83:cc:dd";
     public Connection printerConnection;
     public ZebraPrinter printer;
-    final String[] ids = new String[] {"     2   ", "     JCTR", "    10SSR", "    12SPR", "    1ASPR", "    1BSPR", "    1ISPR", "    1LSPR",
-            "    1OSPR", "    1PSPR", "    1CSPR", "    1SSPR", "    1USPR", "    15SPR", "    1TSPR", "    28SPR", "    27SPR"};
+    final String[] ids = new String[]{"     2   ", "     JCTR", "    10SSR", "    12SPR", "    1ASPR", "    1BSPR", "    1ISPR", "    1LSPR",
+            "    1OSPR", "    1PSPR", "    1CSPR", "    1SSPR", "    1USPR", "    15SPR", "    1TSPR", "    28SPR", "    27SPR", "    2BSPR",
+            "    2FSPR", "    2GSPR", "    2DSPR", "    2HSPR", "    2ISPR", "    2JSPR"};
     String[] names;
-    AlertDialog.Builder adbSettings, adbDCTNum, adbUpload, adbPrinter, adbLabel, adbPicked;
+    public MainViewModel mViewModel;
+    AlertDialog.Builder adbSettings, adbDCTNum, adbUpload, adbPrinter, adbLabel, adbPicked, adbPosition, adbSelection;
     private static TextToSpeech mTTS;
     BluetoothAdapter bluetoothAdapter;
     Set<BluetoothDevice> pairedDevices;
@@ -163,7 +157,7 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
     public static GoodsMovement[] updateGoodsMovements = null;
     public static ArrayList<Long> pickedRowsForDelete = null;
     PickedFragment pf;
-    private EditText etDCTNumber, etLabels, etLabelQnt;
+    AlertDialog adPosition;
     FinishPickingFragment fpf;
     GetWSDump getWSDump;
     String dumpURL = null;
@@ -176,8 +170,130 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
     final int POSTGOODS = 1, POSTLABEL = 2, POSTDEFICIENCY = 3;
     String filenameSD;
     Timer refreshTimer;
+    boolean requestPosition = false, unitedMode = false, nextMode;
     public static String clientId = null;
+    Cell newPosition;
     final Handler uiHandler = new Handler();
+    boolean testLabel = false;
+    private EditText etDCTNumber, etLabels, etLabelQnt, etPosition;
+
+    public static byte[] getConfigLabel(String goods, int qnt, int storeman, String article, String description, String cellDescr) {
+        byte[] configLabel;
+        String desc;
+        String barcode = "G" + goods + Integer.toString(qnt, 36).toUpperCase();
+        String header = qnt + " шт.             кладовшик " + storeman;
+        try {
+            description.getBytes("cp1251");
+            desc = description;
+        } catch (UnsupportedEncodingException e) {
+            desc = Config.transliterate(description);
+        }
+        String cpclConfigLabel = "! 50 200 200 227 1\r\n" +
+                "ON-FEED IGNORE\r\n" +
+//                    "BOX 0 10 440 210 8\r\n" +
+//                    "ENCODING UTF-8\r\n" +
+                "ML 30\r\n" +
+//                "T 0 3 10 0 \r\n" +
+                "TEXT ARIAL02.CPF 0 10 0 " +
+                header +
+                "\r\n" +
+                cellDescr + "    " + article + "\r\n" +
+                desc + "\r\n" +
+                "ENDML\r\n" +
+                "CENTER\r\n" +
+//                    "BARCODE-TEXT 7 0 5\r\n" +
+                "BARCODE 39 1 0 50 0 130 " + barcode + "\r\n" +
+//                    "BARCODE-TEXT OFF\r\n" +
+                "FORM\r\n" +
+                "PRINT\r\n";
+//        Log.d(TAG,cpclConfigLabel);
+
+        try {
+            configLabel = cpclConfigLabel.getBytes("cp1251");
+        } catch (UnsupportedEncodingException e) {
+            FL.d(TAG, "Article " + article + " barcode " + barcode + " description " + description);
+            e.printStackTrace();
+            FL.e(TAG, e.getMessage());
+            configLabel = cpclConfigLabel.getBytes();
+        }
+        return configLabel;
+    }
+
+    public ZebraPrinter connect() {
+        Log.d(TAG, "Connecting...");
+        printerConnection = null;
+        printerConnection = new BluetoothConnection(btmac);
+        try {
+            printerConnection.open();
+            Log.d(TAG, "Connected");
+        } catch (ConnectionException e) {
+            Log.e(TAG, "Comm Error! Disconnecting");
+            disconnect();
+        }
+        ZebraPrinter printer = null;
+        if (printerConnection.isConnected()) {
+            try {
+                printer = ZebraPrinterFactory.getInstance(printerConnection);
+                Log.d(TAG, "Determining Printer Language");
+                PrinterLanguage pl = printer.getPrinterControlLanguage();
+                Log.d(TAG, "Printer Language " + pl);
+            } catch (ConnectionException e) {
+                Log.e(TAG, "Unknown Printer Language");
+                printer = null;
+                disconnect();
+            } catch (ZebraPrinterLanguageUnknownException e) {
+                Log.e(TAG, "Unknown Printer Language");
+                printer = null;
+                disconnect();
+            }
+        }
+        return printer;
+    }
+
+    public void disconnect() {
+        try {
+            Log.d(TAG, "Disconnecting");
+            if (printerConnection != null) {
+                printerConnection.close();
+            } else {
+                Log.e(TAG, "Not Connected");
+            }
+        } catch (ConnectionException e) {
+            Log.e(TAG, "COMM Error! Disconnected");
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (printerConnection != null && printerConnection.isConnected()) {
+            disconnect();
+        }
+    }
+
+    private void sendLabel() {
+        try {
+            String description;// = Config.transliterate(currentGoods.goods_descr);
+            description = currentGoods.goods_descr;
+            if (description.length() > 28) {
+//                description = Config.transliterate(currentGoods.goods_descr).substring(0,28);
+                description = currentGoods.goods_descr.substring(0, 27);
+            }
+            String idBarcode = currentGoods.goods.replaceAll(" ", ".");
+            FL.d(TAG, "id " + idBarcode + " num36 " + Integer.toString(labelQnt, 36));
+            byte[] configLabel = getConfigLabel(idBarcode, labelQnt, App.getStoreMan(), currentGoods.goods_article,
+                    description, currentGoods.cellOut_descr);
+            printerConnection.write(configLabel);
+            Log.d(TAG, "Sending Data");
+            if (printerConnection instanceof BluetoothConnection) {
+                String friendlyName = ((BluetoothConnection) printerConnection).getFriendlyName();
+                Log.d(TAG, friendlyName);
+            }
+        } catch (ConnectionException e) {
+            Log.e(TAG, e.getMessage());
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -186,7 +302,7 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
         try {
             BufferedReader reader = new BufferedReader(
                     new InputStreamReader(openFileInput("stack.trace")));
-            String line, trace="";
+            String line, trace = "";
             while((line = reader.readLine()) != null) {
                 trace += line+"\n";
             }
@@ -199,15 +315,17 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
             sendIntent.setType("message/rfc822");
             startActivity(Intent.createChooser(sendIntent, "Title:"));
             deleteFile("stack.trace");
-        } catch(FileNotFoundException fnfe) {
+        } catch (FileNotFoundException fnfe) {
             Log.d(TAG, "Send e-mail: File not found");
-        } catch(IOException ioe) {
+        } catch (IOException ioe) {
             Log.d(TAG, "Send e-mail: IO exception");
             deleteFile("stack.trace");
         } catch (Exception e) {
             deleteFile("stack.trace");
             Log.d(TAG, "Can't send e-mail");
         }
+        mViewModel = new ViewModelProvider(this).get(MainViewModel.class);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         getSupportActionBar().setDisplayShowHomeEnabled(true);
         getSupportActionBar().setLogo(R.drawable.ic_smallogo);
         getSupportActionBar().setDisplayUseLogoEnabled(true);
@@ -356,83 +474,11 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
         }, 60000L, 60000L);
         getDump();
     }
-    public ZebraPrinter connect() {
-        Log.d(TAG,"Connecting...");
-        printerConnection = null;
-        printerConnection = new BluetoothConnection(btmac);
-        try {
-            printerConnection.open();
-            Log.d(TAG,"Connected");
-        } catch (ConnectionException e) {
-            Log.e(TAG,"Comm Error! Disconnecting");
-            disconnect();
-        }
-        ZebraPrinter printer = null;
-        if (printerConnection.isConnected()) {
-            try {
-                printer = ZebraPrinterFactory.getInstance(printerConnection);
-                Log.d(TAG,"Determining Printer Language");
-                PrinterLanguage pl = printer.getPrinterControlLanguage();
-                Log.d(TAG,"Printer Language " + pl);
-            } catch (ConnectionException e) {
-                Log.e(TAG,"Unknown Printer Language");
-                printer = null;
-                disconnect();
-            } catch (ZebraPrinterLanguageUnknownException e) {
-                Log.e(TAG,"Unknown Printer Language");
-                printer = null;
-                disconnect();
-            }
-        }
-        return printer;
-    }
 
-    public void disconnect() {
-        try {
-            Log.d(TAG,"Disconnecting");
-            if (printerConnection != null) {
-                printerConnection.close();
-            } else {
-                Log.e(TAG, "Not Connected");
-            }
-        } catch (ConnectionException e) {
-            Log.e(TAG,"COMM Error! Disconnected");
-        }
-    }
-    @Override
-    protected void onStop() {
-        super.onStop();
-        if (printerConnection != null && printerConnection.isConnected()) {
-            disconnect();
-        }
-    }
-    private void sendLabel() {
-        try {
-            String description;// = Config.transliterate(currentGoods.goods_descr);
-            description = currentGoods.goods_descr;
-            if (description.length() > 28) {
-//                description = Config.transliterate(currentGoods.goods_descr).substring(0,28);
-                description = currentGoods.goods_descr.substring(0,27);
-            }
-            String idBarcode = currentGoods.goods.replaceAll(" ",".");
-            FL.d(TAG, "id " + idBarcode + " num36 " + Integer.toString(labelQnt, 36));
-            byte[] configLabel = getConfigLabel(idBarcode, labelQnt, App.getStoreMan(), currentGoods.goods_article,
-                    description, currentGoods.cellOut_descr);
-            printerConnection.write(configLabel);
-            Log.d(TAG, "Sending Data");
-            if (printerConnection instanceof BluetoothConnection) {
-                String friendlyName = ((BluetoothConnection) printerConnection).getFriendlyName();
-                Log.d(TAG, friendlyName);
-            }
-        } catch (ConnectionException e) {
-            Log.e(TAG, e.getMessage());
-        }
-    }
-    /*
     public void sendLabel(byte[] label) {
         try {
+            Log.d(TAG, "Print label length " + label.length);
             printerConnection.write(label);
-            Log.d(TAG,"Print label");
             if (printerConnection instanceof BluetoothConnection) {
                 String friendlyName = ((BluetoothConnection) printerConnection).getFriendlyName();
                 Log.d(TAG,friendlyName);
@@ -442,63 +488,27 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
         }
     }
 
-    private byte[] getConfigLabel() {
+    private byte[] getTestLabel() {
         byte[] configLabel;
-        String barcode = "1234567890";
-        String sQnt = "10 pcs";
-        String cpclConfigLabel = "! 60 200 200 227 1\r\n" +
-                    "ON-FEED IGNORE\r\n" +
-//                    "BOX 0 10 440 210 8\r\n" +
-//                    "ENCODING UTF-8" +
-                    "T 0 2 10 10 " + sQnt + " \r\n" +
-//                    "CENTER\r\n" +
-//                    "BARCODE-TEXT 7 0 5\r\n" +
-                    "BARCODE 39 1 1 50 0 130 " + barcode + "\r\n" +
-//                    "BARCODE-TEXT OFF\r\n" +
-                    "FORM\r\n" +
-                    "PRINT\r\n";
-        configLabel = cpclConfigLabel.getBytes();
-        return configLabel;
-    }
-
- */
-    public static byte[] getConfigLabel(String goods, int qnt, int storeman, String article, String description, String cellDescr) {
-        byte[] configLabel;
-        String desc;
-        String barcode = "G" + goods + Integer.toString(qnt, 36);
-        String header = qnt + " шт.             кладовшик " + storeman;
-        try {
-            description.getBytes("cp1251");
-            desc = description;
-        } catch (UnsupportedEncodingException e) {
-            desc = Config.transliterate(description);
-        }
+        String barcode = "0123456789";
+        String str = "ZQ220";
         String cpclConfigLabel = "! 50 200 200 227 1\r\n" +
                 "ON-FEED IGNORE\r\n" +
-//                    "BOX 0 10 440 210 8\r\n" +
-//                    "ENCODING UTF-8\r\n" +
                 "ML 30\r\n" +
-//                "T 0 3 10 0 \r\n" +
                 "TEXT ARIAL02.CPF 0 10 0 " +
-                header +
-                "\r\n" +
-                cellDescr + " " + article + "\r\n" +
-                desc + "\r\n" +
+                str + " \r\n" +
+                "Тест принтера" + " \r\n" +
                 "ENDML\r\n" +
                 "CENTER\r\n" +
-//                    "BARCODE-TEXT 7 0 5\r\n" +
-                "BARCODE 39 1 0 50 0 130 " + barcode + "\r\n" +
-//                    "BARCODE-TEXT OFF\r\n" +
+                "BARCODE 39 1 1 50 0 130 " + barcode + "\r\n" +
+
                 "FORM\r\n" +
                 "PRINT\r\n";
-//        Log.d(TAG,cpclConfigLabel);
         try {
-            configLabel = cpclConfigLabel.getBytes( "cp1251");
+            configLabel = cpclConfigLabel.getBytes("cp1251");
         } catch (UnsupportedEncodingException e) {
-            FL.e(TAG, "Article " + article + " barcode " + barcode + " description " + description);
             e.printStackTrace();
-            FL.e(TAG, e.getMessage());
-            configLabel = cpclConfigLabel.getBytes( );
+            configLabel = cpclConfigLabel.getBytes();
         }
         return configLabel;
     }
@@ -508,6 +518,7 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
         getMenuInflater().inflate(R.menu.menu, menu);
         return true;
     }
+
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
@@ -554,6 +565,7 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
                                                    int position, long id) {
                             printerType = position;
                         }
+
                         @Override
                         public void onNothingSelected(AdapterView<?> arg0) {
                             printerType = 0;
@@ -617,6 +629,9 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
                         }
                     });
                     adbLabel.create().show();
+                } else {
+                    TestPrintTask tp = new TestPrintTask();
+                    tp.execute();
                 }
                 return true;
             case R.id.refresh_item:
@@ -696,6 +711,7 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
             case R.id.picked_goods:
                 Log.d(TAG, "Picked goods clicked");
                 if (App.pickedGoods != null) {
+
                     adbPicked = new AlertDialog.Builder(this);
                     adbPicked.setCancelable(true);
                     adbPicked.setMessage(R.string.adb_picked);
@@ -707,11 +723,113 @@ public class MainActivity extends AppCompatActivity implements TextToSpeech.OnIn
                     adbPicked.create().show();
                 }
                 return true;
+            case R.id.position:
+                Log.d(TAG, "Position clicked");
+                requestPosition = true;
+                adbPosition = new AlertDialog.Builder(this);
+                adbPosition.setCancelable(true);
+                adbPosition.setMessage(R.string.current_position);
+                etPosition = new EditText(this);
+                adbPosition.setView(etPosition);
+                adPosition = adbPosition.create();
+                etPosition.addTextChangedListener(new TextWatcher() {
+                    @Override
+                    public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+                    }
+
+                    @Override
+                    public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+                        Log.d(TAG, "On text changed =" + charSequence);
+                    }
+
+                    @Override
+                    public void afterTextChanged(Editable editable) {
+                        String input;
+                        int entIndex;
+                        int prefix, suffix;
+                        String result;
+                        if (editable.length() > 2) {
+                            input = editable.toString();
+                            if (input.contains("\n") && input.indexOf("\n") == 0) {
+                                input = input.substring(1);
+                            }
+                            if (input.contains("\n") && input.indexOf("\n") > 0) {
+                                entIndex = input.indexOf("\n");
+                                input = input.substring(0, entIndex);
+                                if (CheckCode.checkCellStr(input)) {
+                                    prefix = Integer.parseInt(input.substring(0, input.indexOf(".")));
+                                    suffix = Integer.parseInt(input.substring(input.indexOf(".") + 1));
+                                    result = String.format("%02d", prefix) + String.format("%03d", suffix);
+                                    Log.d(TAG, "Cell name " + result);
+                                    newPosition = Database.getCellByName(result);
+                                    requestPosition = false;
+                                    adPosition.dismiss();
+                                    if (newPosition != null) setPosition(newPosition);
+                                } else {
+                                    MainActivity.say(getResources().getString(R.string.enter_again));
+                                }
+                                etPosition.setText("");
+                            }
+                        }
+                    }
+                });
+                adPosition.show();
+                return true;
+            case R.id.pick_mode:
+                showAdbSelection();
+                break;
             default:
                 break;
         }
         return false;
     }
+
+    private void showAdbSelection() {
+        LinearLayout llAdbSelection = (LinearLayout) getLayoutInflater().inflate(R.layout.adb_pick_mode, null);
+        RadioGroup rgSelection = llAdbSelection.findViewById(R.id.rg_selection);
+        RadioButton rbSeparated = llAdbSelection.findViewById(R.id.rb_separated);
+        RadioButton rbUnited = llAdbSelection.findViewById(R.id.rb_united);
+        unitedMode = App.getUnitedPick();
+        rgSelection.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(RadioGroup radioGroup, int i) {
+                Log.d(TAG, "Radio group " + i);
+                switch (i) {
+                    case R.id.rb_separated:
+                        nextMode = false;
+                        break;
+                    case R.id.rb_united:
+                        nextMode = true;
+                        break;
+                    default:
+                        break;
+                }
+
+            }
+        });
+        if (unitedMode) {
+            rbSeparated.setChecked(false);
+            rbUnited.setChecked(true);
+        } else {
+            rbSeparated.setChecked(true);
+            rbUnited.setChecked(false);
+        }
+        adbSelection = new AlertDialog.Builder(this);
+        adbSelection.setTitle(R.string.pick_mode).setView(llAdbSelection);
+        adbSelection.setNegativeButton(R.string.cancel,
+                (dialog, which) -> dialog.cancel());
+        adbSelection.setPositiveButton(R.string.ok,
+                (dialog, which) -> {
+                    App.setUnitedPick(nextMode);
+                    if (unitedMode != nextMode) {
+
+                        unitedMode = nextMode;
+                        App.setUnitedPick(unitedMode);
+                    }
+                });
+        adbSelection.create().show();
+    }
+
     @Override
     public void onInit(int status) {
         if (status == TextToSpeech.SUCCESS) {
@@ -762,6 +880,7 @@ Honeywell Android Data Collection Intent APIAPI DOCUMENTATION
     };
 
     private void processScan(String scan, String codeId) {
+        Log.d(TAG, "Code id=" + codeId + " barcode =" + scan);
         if (codeId.equals("c") && scan.length() == 11) {
 //            Log.d(TAG, "Scan UPC =" + scan);
             //Rebuild UPC check digit
@@ -793,17 +912,32 @@ Honeywell Android Data Collection Intent APIAPI DOCUMENTATION
             int c = 10 - Integer.parseInt(r.substring(r.length() - 1));
             if (c == 10) c = 0;
             res = res + c;
-            FL.d(TAG, "Rebuilt EAN13 code =" + res);
-            processScan(res);
+            FL.d(TAG, "Rebuilt EAN13 code =" + res + " request position " + requestPosition);
+            if (requestPosition) {
+                requestPosition = false;
+                String result = Config.getCellName(res);
+                if (result == null) {
+                    newPosition = null;
+                } else {
+                    newPosition = Database.getCellByName(result);
+                }
+                FL.d(TAG, "Scanned cell, code " + res + " name " + result);
+                adPosition.dismiss();
+                if (newPosition != null) setPosition(newPosition);
+            } else {
+                processScan(res);
+            }
         } else
         if (codeId.equals("b")) {
-            if(CheckCode.checkGoods39(scan) && scan.length() > 11 && scan.contains(".")) {
+            if (CheckCode.checkGoods39(scan) && scan.length() >= 11 && scan.contains(".")) {
                 String goodsId = scan.substring(1, 10).replaceAll("\\.", " ");
                 String goodsQnt = scan.substring(10).replaceAll("\\.", "");
+//                Log.d(TAG, "Goods id " + goodsId + " goods qnt " + goodsQnt);
                 if (goodsQnt != null && goodsId != null) {
                     int qnt;
                     try {
                         qnt = Integer.parseInt(goodsQnt, 36);
+                        Log.d(TAG, "Goods id " + goodsId + " goods qnt " + qnt);
                         GoodsMovement[] gms = Database.getGoodsById(goodsId);
                         if (gms != null) {
                             GoodsPickingFragment gpf = (GoodsPickingFragment) getSupportFragmentManager().findFragmentByTag(GoodsPickingFragment.class.getSimpleName());
@@ -815,6 +949,7 @@ Honeywell Android Data Collection Intent APIAPI DOCUMENTATION
                             say(getResources().getString(R.string.wrong_barcode));
                         }
                     } catch (NumberFormatException e) {
+//                        Log.d(TAG, " Code 39 barcode " + scan);
                         processScan(scan);
                     }
                 } else {
@@ -844,9 +979,20 @@ Honeywell Android Data Collection Intent APIAPI DOCUMENTATION
             fpf.dumpCellScanned(scan);
         }
     }
+
+    private void setPosition(Cell cell) {
+        GoodsPickingFragment gpf = (GoodsPickingFragment) getSupportFragmentManager().findFragmentByTag(GoodsPickingFragment.class.getSimpleName());
+        App.currentDistance = cell.distance;
+        Log.d(TAG, "Set position distance " + App.currentDistance);
+        if (gpf != null) {
+            gpf.setPosition();
+        }
+    }
+
     public class GetWSBarcodes {
         OkHttpClient client;
         String TAG = "GetWSBarcodes";
+
         void run(String url) throws IOException {
             Request request = new Request.Builder()
                     .url(url)
@@ -1493,6 +1639,7 @@ Honeywell Android Data Collection Intent APIAPI DOCUMENTATION
             e.printStackTrace();
         }
     }
+
     class PrintLabelTask extends AsyncTask<Void, Void, Void> {
 
         @Override
@@ -1505,6 +1652,18 @@ Honeywell Android Data Collection Intent APIAPI DOCUMENTATION
             return null;
         }
     }
+
+    class TestPrintTask extends AsyncTask<Void, Void, Void> {
+
+        @Override
+        protected Void doInBackground(Void... voids) {
+            printer = connect();
+            sendLabel(getTestLabel());
+            disconnect();
+            return null;
+        }
+    }
+
     void writeFileSD(String line) {
         // проверяем доступность SD
         if (!Environment.getExternalStorageState().equals(

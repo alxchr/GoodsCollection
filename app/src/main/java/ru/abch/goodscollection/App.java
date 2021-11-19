@@ -28,6 +28,7 @@ public class App extends Application {
     private static final String bthwKey = "bt_hw";
     private static final String timeKey = "time";
     private static final String dctNumKey = "dct_num";
+    private static final String pickModeKey = "pick_mode";
     public static int state = 0;
     public static final int START = 0, TIMINGS = 1, GOODSPICKING = 2, MAINCYCLE = 3, FINISHPICKING = 4;
 //    public static int iddocdef = 0;
@@ -46,43 +47,26 @@ public class App extends Application {
     public ArrayList<String> workZonesCells;
     public static Cell[] cells = null;
     public static ArrayList<GoodsMovement> pickedGoods = new ArrayList<>();
-    @Override
-    public void onCreate() {
-        super.onCreate();
-        config = new Config();
-        instance = this;
-        sp = getSharedPreferences();
-        storeIndex = sp.getInt(storeIndexKey, -1);
-        storeId = sp.getString(storeIdKey,"    12SPR");
-        storeName = sp.getString(storeNameKey,"");
-        storeMan = sp.getInt(storeManKey, 0);
-        bthw = sp.getString(bthwKey,"");
-        calendar = new GregorianCalendar(2000, Calendar.JANUARY,1);
-        Config.timeShift = calendar.getTime().getTime();
-        FL.init(new FLConfig.Builder(this)
-                .minLevel(FLConst.Level.V)
-                .logToFile(true)
-                .dir(new File(Environment.getExternalStorageDirectory(), "GoodsCollection"))
-                .retentionPolicy(FLConst.RetentionPolicy.FILE_COUNT)
-                .build());
-        FL.setEnabled(true);
-        FL.d(TAG,"Start application store id =" + storeId + " store index =" + storeIndex + " storeman = " + storeMan);
-        db = new Database(this);
-        db.open();
-        timestamp = sp.getString(timeKey,"0");
-        dctNum = sp.getInt(dctNumKey, 0);
-        deviceUniqueIdentifier = Settings.Secure.getString(this.getContentResolver(), Settings.Secure.ANDROID_ID);
-        workZonesCells = new ArrayList<>();
-        pickedGoods = Database.pickedGoods();
-        FL.d(TAG,"Picked goods size =" + pickedGoods.size());
+    private static boolean unitedPick;
+
+    public static boolean getUnitedPick() {
+        return unitedPick;
     }
+
     public static SharedPreferences getSharedPreferences() {
         return PreferenceManager.getDefaultSharedPreferences(App.get());
     }
+
     public static App get() {
         return instance;
     }
-    public static int getStoreIndex() {return storeIndex;};
+
+    public static int getStoreIndex() {
+        return storeIndex;
+    }
+
+    ;
+
     public static String getStoreId() {
         Log.d(TAG, "Get store id =" + storeId);
         return storeId;
@@ -131,13 +115,53 @@ public class App extends Application {
         dctNum = num;
         sp.edit().putInt(dctNumKey, num).apply();
     }
-    public static ArrayList<Zone> getWorkZones(){
+
+    public static ArrayList<Zone> getWorkZones() {
         return workZones;
     }
+
     public static void setWorkZones(ArrayList<Zone> zones) {
         workZones = zones;
     }
+
     public static void clearPickedGoods() {
         pickedGoods = new ArrayList<>();
+    }
+
+    public static void setUnitedPick(boolean mode) {
+        unitedPick = mode;
+        sp.edit().putBoolean(pickModeKey, mode).apply();
+    }
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        config = new Config();
+        instance = this;
+        sp = getSharedPreferences();
+        storeIndex = sp.getInt(storeIndexKey, -1);
+        storeId = sp.getString(storeIdKey, "    12SPR");
+        storeName = sp.getString(storeNameKey, "");
+        storeMan = sp.getInt(storeManKey, 0);
+        bthw = sp.getString(bthwKey, "");
+        unitedPick = sp.getBoolean(pickModeKey, false);
+        calendar = new GregorianCalendar(2000, Calendar.JANUARY, 1);
+        Config.timeShift = calendar.getTime().getTime();
+        FL.init(new FLConfig.Builder(this)
+                .minLevel(FLConst.Level.V)
+                .logToFile(true)
+                .dir(new File(Environment.getExternalStorageDirectory(), "GoodsCollection"))
+                .retentionPolicy(FLConst.RetentionPolicy.FILE_COUNT)
+                .build());
+        FL.setEnabled(true);
+        FL.d(TAG, "Start application store id =" + storeId + " store index =" + storeIndex + " storeman = " + storeMan);
+        db = new Database(this);
+        db.open();
+        timestamp = sp.getString(timeKey, "0");
+        dctNum = sp.getInt(dctNumKey, 0);
+        deviceUniqueIdentifier = Settings.Secure.getString(this.getContentResolver(), Settings.Secure.ANDROID_ID);
+        workZonesCells = new ArrayList<>();
+        pickedGoods = Database.pickedGoods();
+        FL.d(TAG, "Picked goods size =" + pickedGoods.size());
     }
 }

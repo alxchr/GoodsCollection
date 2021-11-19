@@ -1,9 +1,6 @@
 package ru.abch.goodscollection;
 
 import android.os.Bundle;
-
-import androidx.fragment.app.Fragment;
-
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
@@ -12,6 +9,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+
+import androidx.fragment.app.Fragment;
 
 import com.bosphere.filelogger.FL;
 
@@ -89,11 +88,13 @@ public class FinishPickingFragment extends Fragment {
                                 ((MainActivity) getActivity()).dumpIntoCell(dumpCell);
                                 ((MainActivity) getActivity()).gotoMainFragment(App.getWorkZones());
                             } else {
-                                Log.d(TAG, "Illegal cell name " + result);
+                                etDumpCell.setText("");
+                                FL.d(TAG, "Illegal cell name " + result);
                                 MainActivity.say(getResources().getString(R.string.enter_again));
                             }
                         } else {
                             MainActivity.say(getResources().getString(R.string.enter_again));
+                            etDumpCell.setText("");
                         }
                         etDumpCell.setText("");
                     }
@@ -104,6 +105,7 @@ public class FinishPickingFragment extends Fragment {
             @Override
             public void onClick(View view) {
                 ((MainActivity) getActivity()).clearSelectedGoods();
+                Database.clearSkipped();
                 ArrayList<Timing> timings = ((MainActivity) getActivity()).getTimings(App.zonein);
                 FL.d(TAG, "Continue picking at " + App.zonein + " timings size " + timings.size() + " goods movements size "
                         + ((MainActivity)getActivity()).goodsMovements.size());

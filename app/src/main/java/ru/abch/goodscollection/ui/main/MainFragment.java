@@ -1,45 +1,33 @@
 package ru.abch.goodscollection.ui.main;
 
-import androidx.lifecycle.ViewModelProvider;
-
 import android.os.Bundle;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.fragment.app.Fragment;
-
 import android.util.Log;
-import android.util.SparseBooleanArray;
-import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
-import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.Spinner;
-import android.widget.TextView;
 
-import com.bosphere.filelogger.FL;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
 
 import java.util.ArrayList;
 
 import ru.abch.goodscollection.App;
 import ru.abch.goodscollection.Client;
-import ru.abch.goodscollection.Config;
 import ru.abch.goodscollection.Database;
 import ru.abch.goodscollection.MainActivity;
 import ru.abch.goodscollection.R;
-import ru.abch.goodscollection.WorkZoneAdapter;
 import ru.abch.goodscollection.Zone;
 import ru.abch.goodscollection.ZoneAdapter;
 
 public class MainFragment extends Fragment {
     private static final String TAG = "MainFragment";
-    private MainViewModel mViewModel;
+
     ListView lvButtons;
     ZoneAdapter zoneAdapter;
     ArrayList<Zone> workZones, allZones, selected;
@@ -107,7 +95,6 @@ public class MainFragment extends Fragment {
     @Override
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
-        mViewModel = new ViewModelProvider(this).get(MainViewModel.class);
         // TODO: Use the ViewModel
         allZones = Database.getZones(App.ZONE_DUMP);
         zoneAdapter = new ZoneAdapter(getActivity(), Database.getZones(App.ZONE_DUMP));

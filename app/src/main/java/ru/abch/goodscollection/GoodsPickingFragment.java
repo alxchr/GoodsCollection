@@ -1,17 +1,7 @@
 package ru.abch.goodscollection;
 
-import androidx.appcompat.app.AlertDialog;
-import androidx.lifecycle.ViewModelProvider;
-
 import android.content.DialogInterface;
 import android.os.Bundle;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.fragment.app.Fragment;
-
-import android.text.Editable;
-import android.text.TextWatcher;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -22,14 +12,18 @@ import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
+import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.bosphere.filelogger.FL;
 
 import java.util.ArrayList;
-
-import ru.abch.goodscollection.ui.main.MainFragment;
 
 public class GoodsPickingFragment extends Fragment {
 
@@ -45,6 +39,7 @@ public class GoodsPickingFragment extends Fragment {
     AlertDialog.Builder adbGoods, adbSkip, adbBreak, adbDeficiency;
     WebView photoView;
     LinearLayout llButtons, llTotal, llQty, llCell;
+    ProgressBar pbBar;
     public static GoodsPickingFragment newInstance(ArrayList<GoodsMovement> goodsMovements) {
         GoodsPickingFragment pf = new GoodsPickingFragment();
         pf.goodsMovements = goodsMovements;
@@ -134,6 +129,7 @@ public class GoodsPickingFragment extends Fragment {
                                 subtotal, currentGoods.goods_descr, currentGoods.units, currentGoods.goods_article);
                     }
                     goodsMovements.clear();
+                    Database.unlockGoodsMovements();
                     FL.d(TAG, "Break positive button click");
                     ((MainActivity) getActivity()).gotoFinishPickingFragment();
                 }
@@ -291,6 +287,7 @@ public class GoodsPickingFragment extends Fragment {
         llCell = view.findViewById(R.id.ll_cell);
         llQty = view.findViewById(R.id.ll_qty);
         llTotal = view.findViewById(R.id.ll_total);
+        pbBar = view.findViewById(R.id.pbbar);
         return view;
     }
 
@@ -317,7 +314,9 @@ public class GoodsPickingFragment extends Fragment {
         goodsMovements = ((MainActivity) getActivity()).goodsMovements;
         Log.d(TAG, "goodsMovements size " + goodsMovements.size());
         if(goodsMovements != null) {
-            for(int i = 0; i < goodsMovements.size(); i++) {
+            llButtons.setVisibility(View.GONE);
+            pbBar.setVisibility(View.VISIBLE);
+            for (int i = 0; i < goodsMovements.size(); i++) {
                 goodsMovements.get(i).distance = Database.getCellById(goodsMovements.get(i).cellOut).distance;
 //                FL.d(TAG +" before sort", "Cell " + goodsMovements.get(i).cellOut_descr +
 //                        " distance " + goodsMovements.get(i).distance);
@@ -331,11 +330,15 @@ public class GoodsPickingFragment extends Fragment {
                 }
                 return ret;
             });
+            pbBar.setVisibility(View.GONE);
+            llButtons.setVisibility(View.VISIBLE);
 /*
             for(int i = 0; i < goodsMovements.size(); i++) {
                 FL.d(TAG +" after sort", "Cell " + goodsMovements.get(i).cellOut_descr +
                         " distance " + goodsMovements.get(i).distance);
-            }   */
+            }
+
+ */
             nextGoods();
         } else {
             FL.d(TAG, "onResume goodsMovements is null");
@@ -407,11 +410,11 @@ public class GoodsPickingFragment extends Fragment {
         }
         for (GoodsMovement gm : goodsMovements) {
             int nSkipped = Database.getSkipped(gm.goods, gm.mdoc, gm.cellOut_task, gm.cellIn_task);
-            if(gm.qnt > nSkipped) {
-                gm.qnt -= nSkipped;
-                if(nSkipped > 0)
-                    FL.d(TAG, "Skipped " + gm.goods_article + " " + nSkipped + " mdoc " + gm.mdoc +
+            if (nSkipped > 0)
+                FL.d(TAG, "Skipped " + gm.goods_article + " " + nSkipped + " mdoc " + gm.mdoc +
                         " cellOut " + gm.cellOut_descr + " cellIn " + gm.cellIn_descr);
+            if (gm.qnt > nSkipped) {
+                gm.qnt -= nSkipped;
             } else {
                 goodsMovements.remove(gm);
                 FL.d(TAG, "Remove " + gm.goods_article + " " + gm.qnt + " mdoc " + gm.mdoc +
@@ -421,32 +424,45 @@ public class GoodsPickingFragment extends Fragment {
         if(!goodsMovements.isEmpty()) {
             tvPickingTitle.setText(getResources().getString(R.string.picking));
             currentGoods = goodsMovements.get(0);
-            Database.setLock(currentGoods.goods, currentGoods.mdoc, currentGoods.cellOut_task, currentGoods.cellIn_task, 1);
-//            int nSkipped = Database.getSkipped(currentGoods.goods, currentGoods.mdoc, currentGoods.cellOut_task, currentGoods.cellIn_task);
-            MainActivity.currentGoods = currentGoods;
-            FL.d(TAG, "Next goods " + currentGoods.goods_descr + " qnt " + currentGoods.qnt + " article " + currentGoods.goods_article +
-                     " cell " + currentGoods.cellOut_descr + " time " + Config.comttTime(currentGoods.startTime));
-            tvGoodsDesc.setText(currentGoods.goods_descr);
-            tvCell.setText(currentGoods.cellOut_descr);
-            tvCell.setTextColor(getResources().getColor(R.color.purple_500));
-            MainActivity.say(urgentStr + getResources().getString(R.string.cell) + " " + currentGoods.cellOut_descr);
-            total = currentGoods.qnt;
+            while (!goodsMovements.isEmpty() && Database.setLock(currentGoods.goods,
+                    currentGoods.mdoc, currentGoods.cellOut_task, currentGoods.cellIn_task, 1) == 0) {
+                goodsMovements.remove(0);
+                if (!goodsMovements.isEmpty()) currentGoods = goodsMovements.get(0);
+            }
+            if (!goodsMovements.isEmpty()) {
+//                currentGoods = goodsMovements.get(0);
+                MainActivity.currentGoods = currentGoods;
+                FL.d(TAG, "Next goods " + currentGoods.goods_descr + " qnt " + currentGoods.qnt + " article " + currentGoods.goods_article +
+                        " cell " + currentGoods.cellOut_descr + " time " + Config.comttTime(currentGoods.startTime));
+                tvGoodsDesc.setText(currentGoods.goods_descr);
+                tvCell.setText(currentGoods.cellOut_descr);
+                tvCell.setTextColor(getResources().getColor(R.color.purple_500));
+                MainActivity.say(urgentStr + getResources().getString(R.string.cell) + " " + currentGoods.cellOut_descr);
+                total = currentGoods.qnt;
 //            subtotal = 0;
-            subtotal = Database.countPicked(currentGoods.goods, currentGoods.mdoc, currentGoods.cellOut_task, currentGoods.cellIn_task);
-            qty = 0;
-            String remain = String.valueOf(total - subtotal);// + getResources().getString(R.string.remain_of) + total;
-            tvTotal.setText(remain);
-            etPickQty.setEnabled(true);
-            etPickQty.requestFocus();
-            etPickQty.setText("");
-            etPickQty.setSelection(etPickQty.getText().length());
-            tvArticle.setText(currentGoods.goods_article);
-            tvBrand.setText(currentGoods.goods_brand);
-            labelPicked.setVisibility(View.VISIBLE);
-            labelPicked.setText(getResources().getString(R.string.picked) + currentGoods.units);
-            labelTotal.setVisibility(View.VISIBLE);
-            String labelRemain = getResources().getString(R.string.remain) + currentGoods.units;
-            labelTotal.setText(labelRemain);
+                subtotal = Database.countPicked(currentGoods.goods, currentGoods.mdoc, currentGoods.cellOut_task, currentGoods.cellIn_task);
+                qty = 0;
+                String remain = String.valueOf(total - subtotal);// + getResources().getString(R.string.remain_of) + total;
+                tvTotal.setText(remain);
+                etPickQty.setEnabled(true);
+                etPickQty.requestFocus();
+                etPickQty.setText("");
+                etPickQty.setSelection(etPickQty.getText().length());
+                tvArticle.setText(currentGoods.goods_article);
+                tvBrand.setText(currentGoods.goods_brand);
+                labelPicked.setVisibility(View.VISIBLE);
+                labelPicked.setText(getResources().getString(R.string.picked) + currentGoods.units);
+                labelTotal.setVisibility(View.VISIBLE);
+                String labelRemain = getResources().getString(R.string.remain) + currentGoods.units;
+                labelTotal.setText(labelRemain);
+            } else {
+                Log.d(TAG, "Goods list is empty, go to finish picking");
+                Database.unlockGoodsMovements();
+                ((MainActivity) getActivity()).gotoFinishPickingFragment();
+            }
+//            Database.setLock(currentGoods.goods, currentGoods.mdoc, currentGoods.cellOut_task, currentGoods.cellIn_task, 1);
+//            int nSkipped = Database.getSkipped(currentGoods.goods, currentGoods.mdoc, currentGoods.cellOut_task, currentGoods.cellIn_task);
+
         } else {
             Log.d(TAG, "Goods list is empty, go to finish picking");
             Database.unlockGoodsMovements();
@@ -457,18 +473,19 @@ public class GoodsPickingFragment extends Fragment {
     public void processScan(String code) {
         BarCode barCode;
         if(goodsMovements == null || goodsMovements.isEmpty()) {
+            Database.unlockGoodsMovements();
             ((MainActivity) getActivity()).gotoFinishPickingFragment();
         } else {
             barCode = Database.getBarCode(code);
             if(barCode != null && barCode.goods.equals(currentGoods.goods)) {
                 qty += barCode.qnt;
-                String toastBarcode = barCode.barcode + " " + currentGoods.goods_descr + " " + barCode.qnt;
-                Toast.makeText(getContext(), toastBarcode, Toast.LENGTH_SHORT).show();
+//                String toastBarcode = barCode.barcode + " " + currentGoods.goods_descr + " " + barCode.qnt;
+//                Toast.makeText(getContext(), toastBarcode, Toast.LENGTH_SHORT).show();
                 if (qty + subtotal == total) {
                     Database.setPick(currentGoods.goods, currentGoods.mdoc,
                             currentGoods.cellOut_task, currentGoods.cellIn_task, total);
                     Database.beginTr();
-                    Database.updateGoodsQuantity(currentGoods.goods,currentGoods.cellOut_task,currentGoods.mdoc,total);
+                    Database.updateGoodsQuantity(currentGoods.goods, currentGoods.cellOut_task, currentGoods.mdoc, total);
                     Database.addPickedGoods(currentGoods.goods,
                             currentGoods.mdoc,
                             currentGoods.cellOut_task,
@@ -556,8 +573,8 @@ public class GoodsPickingFragment extends Fragment {
             for (GoodsMovement gm : gms) {
                 if(gm.goods.equals(currentGoods.goods)) {
                     qty += qnt;
-                    String toastBarcode = gm.goods + " " + gm.goods_descr + " " + qnt;
-                    Toast.makeText(getContext(), toastBarcode, Toast.LENGTH_SHORT).show();
+//                    String toastBarcode = gm.goods + " " + gm.goods_descr + " " + qnt;
+//                    Toast.makeText(getContext(), toastBarcode, Toast.LENGTH_SHORT).show();
                     if (qty + subtotal < total) {
                         etPickQty.requestFocus();
                         etPickQty.setText(String.valueOf(qty));
@@ -676,5 +693,18 @@ public class GoodsPickingFragment extends Fragment {
         Log.d(TAG, "show photo " + photoURL);
         photoView.loadUrl(photoURL);
         photoView.setVisibility(View.VISIBLE);
+    }
+
+    public void setPosition() {
+        goodsMovements.sort((lhs, rhs) -> {
+            int ret = 0;
+            if (lhs != null && rhs != null) {
+                int leftDistance = lhs.getDistance(App.currentDistance);
+                int rightDistance = rhs.getDistance(App.currentDistance);
+                ret = Integer.compare(leftDistance, rightDistance);
+            }
+            return ret;
+        });
+        nextGoods();
     }
 }

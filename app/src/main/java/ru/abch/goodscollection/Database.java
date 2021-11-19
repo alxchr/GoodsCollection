@@ -202,6 +202,7 @@ public class Database {
         ContentValues cv = new ContentValues();
         cv.put(COLUMN_LOCK, 0);
         mDB.update(table, cv, null, null);
+        FL.d(TAG, "Unlock all");
     }
     /*
     public static void clearPicked() {
@@ -292,9 +293,23 @@ public class Database {
         ContentValues cv = new ContentValues();
         cv.put(COLUMN_LOCK, lock);
         int rows = mDB.update(table, cv, COLUMN_CELL_IN_TASK + " =? and " +
-                COLUMN_CELL_OUT_TASK + " =? and " + COLUMN_MDOC + " =? and " + COLUMN_GOODS_ID + " = ?",
-                new String[] {cellIn_task, cellOut_task, mdoc, goods});
-        FL.d(TAG,"Lock row for " + rows + " rows lock " + lock);
+                        COLUMN_CELL_OUT_TASK + " =? and " + COLUMN_MDOC + " =? and " + COLUMN_GOODS_ID + " = ?",
+                new String[]{cellIn_task, cellOut_task, mdoc, goods});
+        FL.d(TAG, "Lock row for " + rows + " rows lock " + lock);
+        if (rows > 1) {
+            Cursor c = mDB.query(table, null, COLUMN_CELL_IN_TASK + " =? and " +
+                            COLUMN_CELL_OUT_TASK + " =? and " + COLUMN_MDOC + " =? and " + COLUMN_GOODS_ID + " = ?",
+                    new String[]{cellIn_task, cellOut_task, mdoc, goods}, null, null, null);
+            c.moveToNext(); //skip 1st
+            mDB.beginTransaction();
+            while (c.moveToNext()) {
+                long row = c.getLong(0);
+                mDB.delete(table, COLUMN_ID + "=?", new String[]{String.valueOf(row)});
+                FL.e(TAG, "Delete duplicate row " + row);
+            }
+            mDB.endTransaction();
+            c.close();
+        }
         return rows;
     }
     public static int checkLock(String goods, String mdoc,String cellOut_task, String cellIn_task) {
@@ -1062,7 +1077,7 @@ public class Database {
                 + "on GM." + COLUMN_CELL_OUT_TASK + " = C." + COLUMN_CELL_ID
                 + " left join " + tablePicked + " as P "
                 + "on GM." + COLUMN_GOODS_ID + " = P." + COLUMN_GOODS_ID
-                + " where C." + COLUMN_CELL_TYPE + " >= 7440 and C." + COLUMN_CELL_DISTANCE + " <= 8500 and P." + COLUMN_CELL_OUT_TASK + " is NULL LIMIT 10";
+                + " where C." + COLUMN_CELL_DISTANCE + " >= 7440 and C." + COLUMN_CELL_DISTANCE + " <= 8500 and P." + COLUMN_CELL_OUT_TASK + " is NULL LIMIT 10";
         /*
         Cursor c = mDB.query(table, new String[] {COLUMN_GOODS_ID,COLUMN_GOODS_DESC,COLUMN_GOODS_ARTICLE,COLUMN_QNT,COLUMN_GOODS_UNITS},
 //                COLUMN_CELL_DISTANCE + " >= 7500 and " + COLUMN_CELL_DISTANCE + " <= 8500",

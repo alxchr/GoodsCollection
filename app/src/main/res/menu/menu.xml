@@ -17,14 +17,24 @@
         android:title="@string/warehouse"  />
     <item android:id="@+id/dct_num_item"
         app:showAsAction="never"
-        android:title="@string/dct_num"  />
-    <item android:id="@+id/printer_item"
+        android:title="@string/dct_num" />
+    <item
+        android:id="@+id/printer_item"
         app:showAsAction="ifRoom"
-        android:title="@string/printer"  />
-    <item android:id="@+id/small_piece"
+        android:title="@string/printer" />
+    <item
+        android:id="@+id/small_piece"
         app:showAsAction="never"
         android:title="@string/small_piece_goods" />
-    <item android:id="@+id/picked_goods"
+    <item
+        android:id="@+id/picked_goods"
         app:showAsAction="never"
         android:title="@string/adb_picked" />
+    <item
+        android:id="@+id/position"
+        android:title="@string/current_position"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/pick_mode"
+        android:title="@string/pick_mode" />
 </menu>

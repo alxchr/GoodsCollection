@@ -65,8 +65,14 @@
     <string name="small_piece_goods">Мелко-штучный товар</string>
     <string name="goods_photo">Фото</string>
     <string name="no_photo">Нет фотографии</string>
-    <string name="sd_card_error">Ошиба записи на карту SD</string>
+    <string name="sd_card_error">Ошибка записи на карту SD</string>
     <string name="no_sd_card">Установите карту SD</string>
     <string name="all_clients">Все</string>
     <string name="adb_picked">Собрано</string>
+    <string name="current_position">Текущая позиция</string>
+    <string name="start_cell_label">Ближайшая ячейка nn.nnn</string>
+    <string name="pick_mode">Отбор товара</string>
+    <string name="separate">Раздельно по заданиям</string>
+    <string name="united">Объединенный по ячейке</string>
+    <string name="cancel">Отмена</string>
 </resources>
